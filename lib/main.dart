@@ -9,17 +9,15 @@ import 'screens/assignment_screen.dart';
 import 'screens/result_screen.dart';
 import 'screens/event_screen.dart';
 import 'screens/student_list_screen.dart';
-import 'screens/users_screen.dart';
-import 'screens/attendance_screen.dart';
-import 'screens/attendance_report_screen.dart';
+import 'screens/users_screen.dart'; // 🌐 NEW API SCREEN
 
-// Database (ONLY ONE SOURCE)
+// Database
 import 'databases/database_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize SQLite database safely
+  // Initialize database
   await DatabaseService.instance.database;
 
   runApp(const StudentApp());
@@ -34,10 +32,8 @@ class StudentApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Student Management App',
 
-      // Start screen
       home: const LoginScreen(),
 
-      // Routes
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegistrationScreen(),
@@ -48,12 +44,11 @@ class StudentApp extends StatelessWidget {
         '/results': (context) => const ResultsScreen(),
         '/events': (context) => const EventsScreen(),
 
+        // 👤 Local CRUD
         '/students': (context) => const StudentListScreen(),
 
+        // 🌐 API USERS (NEW)
         '/users': (context) => const UsersScreen(),
-
-        '/attendance': (context) => const AttendanceScreen(),
-        '/attendance-report': (context) => const AttendanceReportScreen(),
       },
     );
   }

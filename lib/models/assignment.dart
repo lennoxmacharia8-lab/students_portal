@@ -3,27 +3,16 @@ class Assignment {
   final String title;
   final String course;
   final String status;
-  final String studentId;
-  final String studentName;
 
   const Assignment({
     this.id,
     required this.title,
     required this.course,
     required this.status,
-    required this.studentId,
-    required this.studentName,
   });
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'course': course,
-      'status': status,
-      'student_id': studentId,
-      'student_name': studentName,
-    };
+    return {'id': id, 'title': title, 'course': course, 'status': status};
   }
 
   factory Assignment.fromMap(Map<String, dynamic> map) {
@@ -32,8 +21,6 @@ class Assignment {
       title: map['title'],
       course: map['course'],
       status: map['status'],
-      studentId: map['student_id'] ?? '',
-      studentName: map['student_name'] ?? 'Unknown',
     );
   }
 }

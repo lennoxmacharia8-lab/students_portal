@@ -12,35 +12,30 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController idController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController regNoController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController courseController = TextEditingController();
-  final TextEditingController yearController = TextEditingController();
 
-  Future<void> registerStudent() async {
+  Future<void> registerUser() async {
     if (_formKey.currentState!.validate()) {
       try {
         final student = Student(
-          id: idController.text.trim(),
           name: nameController.text.trim(),
-          regNo: regNoController.text.trim(),
           email: emailController.text.trim(),
-          phone: phoneController.text.trim(),
-          course: courseController.text.trim(),
-          year: int.parse(yearController.text.trim()),
+          password: regNoController.text,
         );
 
         await DatabaseService.instance.registerStudent(student.toMap());
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Student added: ${student.name}")),
+            SnackBar(content: Text("Registered: ${nameController.text}")),
           );
-
-          Navigator.pop(context, true); // return to list screen
+          Future.delayed(const Duration(seconds: 1), () {
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, '/dashboard');
+            }
+          });
         }
       } catch (e) {
         if (mounted) {
@@ -54,13 +49,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   void dispose() {
-    idController.dispose();
     nameController.dispose();
     regNoController.dispose();
     emailController.dispose();
-    phoneController.dispose();
-    courseController.dispose();
-    yearController.dispose();
     super.dispose();
   }
 
@@ -68,11 +59,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Add Student Record"),
+        title: const Text("Student Registration"),
         centerTitle: true,
       ),
 
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -80,23 +71,53 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             children: [
               const SizedBox(height: 10),
 
-              _buildField(idController, "Student ID (e.g STU001)"),
-              _buildField(regNoController, "Registration Number"),
-              _buildField(nameController, "Full Name"),
-              _buildField(emailController, "Email"),
-              _buildField(phoneController, "Phone Number"),
-              _buildField(courseController, "Course"),
-
               TextFormField(
-                controller: yearController,
-                keyboardType: TextInputType.number,
+                controller: nameController,
                 decoration: const InputDecoration(
-                  labelText: "Year of Study",
+                  labelText: "Full Name",
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return "Enter year of study";
+                    return "Enter your name";
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 15),
+
+              TextFormField(
+                controller: regNoController,
+                decoration: const InputDecoration(
+                  labelText: "Registration Number",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.confirmation_number),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return "Enter registration number";
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 15),
+
+              TextFormField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: "Email",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return "Enter email";
+                  }
+                  if (!value.contains("@")) {
+                    return "Enter valid email";
                   }
                   return null;
                 },
@@ -108,32 +129,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: registerStudent,
-                  child: const Text("Save Student"),
+                  onPressed: registerUser,
+                  child: const Text("Register", style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildField(TextEditingController controller, String label) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextFormField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: const OutlineInputBorder(),
-        ),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return "Required field";
-          }
-          return null;
-        },
       ),
     );
   }
