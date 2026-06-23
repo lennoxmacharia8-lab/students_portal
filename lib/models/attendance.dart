@@ -1,39 +1,35 @@
-class Assignment {
+class Attendance {
   final int? id;
-  final String title;
-  final String course;
-  final String status;
   final String studentId;
   final String studentName;
+  final String date;
+  final String status; // Present, Absent, Late
 
-  const Assignment({
+  const Attendance({
     this.id,
-    required this.title,
-    required this.course,
-    required this.status,
     required this.studentId,
     required this.studentName,
+    required this.date,
+    required this.status,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'title': title,
-      'course': course,
-      'status': status,
       'student_id': studentId,
       'student_name': studentName,
+      'date': date,
+      'status': status,
     };
   }
 
-  factory Assignment.fromMap(Map<String, dynamic> map) {
-    return Assignment(
+  factory Attendance.fromMap(Map<String, dynamic> map) {
+    return Attendance(
       id: map['id'],
-      title: map['title'],
-      course: map['course'],
-      status: map['status'],
       studentId: map['student_id'] ?? '',
       studentName: map['student_name'] ?? 'Unknown',
+      date: map['date'] ?? '',
+      status: map['status'] ?? 'Absent',
     );
   }
 }

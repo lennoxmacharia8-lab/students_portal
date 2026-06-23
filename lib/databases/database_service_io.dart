@@ -7,34 +7,42 @@ class DatabaseService {
 
   DatabaseService._init();
 
-  // 🔥 Get database (singleton)
+  // =========================
+  // DATABASE INIT
+  // =========================
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _database = await _initDB('student_app.db');
     return _database!;
   }
 
-  // 🏗️ Create database
   Future<Database> _initDB(String fileName) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, fileName);
 
-    return await openDatabase(
+    return openDatabase(
       path,
-      version: 2,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
   }
 
-  // 🧱 Create tables
+  // =========================
+  // TABLES
+  // =========================
+
   Future _createDB(Database db, int version) async {
     await db.execute('''
       CREATE TABLE students (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
+        reg_no TEXT UNIQUE,
         name TEXT,
         email TEXT UNIQUE,
-        password TEXT
+        phone TEXT,
+        course TEXT,
+        year INTEGER
       )
     ''');
 
@@ -51,7 +59,9 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
         course TEXT,
-        status TEXT
+        status TEXT,
+        student_id TEXT,
+        student_name TEXT
       )
     ''');
 
@@ -60,7 +70,9 @@ class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         course TEXT,
         code TEXT,
-        grade TEXT
+        grade TEXT,
+        student_id TEXT,
+        student_name TEXT
       )
     ''');
 
@@ -72,87 +84,119 @@ class DatabaseService {
         location TEXT
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id TEXT,
+        student_name TEXT,
+        date TEXT,
+        status TEXT
+      )
+    ''');
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS results (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          course TEXT,
-          code TEXT,
-          grade TEXT
-        )
-      ''');
+    if (oldVersion < 3) {
+      await db.execute('DROP TABLE IF EXISTS students');
 
       await db.execute('''
-        CREATE TABLE IF NOT EXISTS events (
+        CREATE TABLE students (
+          id TEXT PRIMARY KEY,
+          reg_no TEXT UNIQUE,
+          name TEXT,
+          email TEXT UNIQUE,
+          phone TEXT,
+          course TEXT,
+          year INTEGER
+        )
+      ''');
+    }
+
+    if (oldVersion < 4) {
+      await db.execute('ALTER TABLE assignments ADD COLUMN student_id TEXT');
+      await db.execute('ALTER TABLE assignments ADD COLUMN student_name TEXT');
+      await db.execute('ALTER TABLE results ADD COLUMN student_id TEXT');
+      await db.execute('ALTER TABLE results ADD COLUMN student_name TEXT');
+    }
+
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE attendance (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT,
+          student_id TEXT,
+          student_name TEXT,
           date TEXT,
-          location TEXT
+          status TEXT
         )
       ''');
     }
   }
 
   // =========================
-  // 👤 STUDENTS METHODS
+  // STUDENTS
   // =========================
 
-  // ➕ Register Student
   Future<int> registerStudent(Map<String, dynamic> student) async {
     final db = await database;
-    return await db.insert('students', student);
-  }
 
-  // 🔐 Login Student
-  Future<Map<String, dynamic>?> loginStudent(
-    String email,
-    String password,
-  ) async {
-    final db = await database;
+    final data = Map<String, dynamic>.from(student);
 
-    final result = await db.query(
+    // 🔥 FIX: ensure ID exists
+    data['id'] ??= DateTime.now().millisecondsSinceEpoch.toString();
+
+    final result = await db.insert(
       'students',
-      where: 'email = ? AND password = ?',
-      whereArgs: [email, password],
+      data,
+      conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
-    if (result.isNotEmpty) {
-      return result.first;
+    final course = data['course']?.toString().trim();
+    if (course != null && course.isNotEmpty) {
+      await addCourseIfMissing(course, course);
     }
-    return null;
+
+    return result;
   }
 
-  // 📋 Get All Students
+  Future<int> addCourseIfMissing(String title, String code) async {
+    final db = await database;
+    final existing = await db.query(
+      'courses',
+      where: 'title = ? OR code = ?',
+      whereArgs: [title, code],
+      limit: 1,
+    );
+
+    if (existing.isNotEmpty) {
+      return 0;
+    }
+
+    return await db.insert('courses', {'title': title, 'code': code});
+  }
+
   Future<List<Map<String, dynamic>>> getStudents() async {
     final db = await database;
     return await db.query('students');
   }
 
-  // 🔍 Search Students
   Future<List<Map<String, dynamic>>> searchStudents(String query) async {
     final db = await database;
 
     return await db.query(
       'students',
-      where: 'name LIKE ? OR email LIKE ?',
-      whereArgs: ['%$query%', '%$query%'],
+      where: 'name LIKE ? OR email LIKE ? OR reg_no LIKE ?',
+      whereArgs: ['%$query%', '%$query%', '%$query%'],
     );
   }
 
-  // 🗑️ Delete Student
-  Future<int> deleteStudent(int id) async {
+  Future<int> deleteStudent(String id) async {
     final db = await database;
-
     return await db.delete('students', where: 'id = ?', whereArgs: [id]);
   }
 
-  // ✏️ Update Student
-  Future<int> updateStudent(int id, Map<String, dynamic> student) async {
+  Future<int> updateStudent(String id, Map<String, dynamic> student) async {
     final db = await database;
-
     return await db.update(
       'students',
       student,
@@ -162,7 +206,7 @@ class DatabaseService {
   }
 
   // =========================
-  // 📚 COURSES METHODS
+  // COURSES
   // =========================
 
   Future<int> addCourse(Map<String, dynamic> course) async {
@@ -176,7 +220,7 @@ class DatabaseService {
   }
 
   // =========================
-  // 📝 ASSIGNMENTS METHODS
+  // ASSIGNMENTS
   // =========================
 
   Future<int> addAssignment(Map<String, dynamic> assignment) async {
@@ -190,7 +234,7 @@ class DatabaseService {
   }
 
   // =========================
-  // 📊 RESULTS METHODS
+  // RESULTS
   // =========================
 
   Future<int> addResult(Map<String, dynamic> result) async {
@@ -204,7 +248,7 @@ class DatabaseService {
   }
 
   // =========================
-  // 📅 EVENTS METHODS
+  // EVENTS
   // =========================
 
   Future<int> addEvent(Map<String, dynamic> event) async {
@@ -215,5 +259,50 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> getEvents() async {
     final db = await database;
     return await db.query('events');
+  }
+
+  // =========================
+  // ATTENDANCE
+  // =========================
+
+  Future<int> markAttendance(Map<String, dynamic> attendance) async {
+    final db = await database;
+    return await db.insert('attendance', attendance);
+  }
+
+  Future<List<Map<String, dynamic>>> getAttendance() async {
+    final db = await database;
+    return await db.query('attendance');
+  }
+
+  Future<List<Map<String, dynamic>>> getAttendanceByDate(String date) async {
+    final db = await database;
+    return await db.query('attendance', where: 'date = ?', whereArgs: [date]);
+  }
+
+  Future<List<Map<String, dynamic>>> getAttendanceByStudent(
+    String studentId,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'attendance',
+      where: 'student_id = ?',
+      whereArgs: [studentId],
+    );
+  }
+
+  Future<int> updateAttendance(int id, Map<String, dynamic> attendance) async {
+    final db = await database;
+    return await db.update(
+      'attendance',
+      attendance,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> deleteAttendance(int id) async {
+    final db = await database;
+    return await db.delete('attendance', where: 'id = ?', whereArgs: [id]);
   }
 }

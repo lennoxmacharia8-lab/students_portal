@@ -43,7 +43,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
     });
   }
 
-  Future<void> deleteStudent(int id) async {
+  Future<void> deleteStudent(String id) async {
     await DatabaseService.instance.deleteStudent(id);
     loadStudents();
   }
@@ -57,14 +57,30 @@ class _StudentListScreenState extends State<StudentListScreen> {
     );
 
     if (result == true) {
-      loadStudents(); // refresh after update
+      loadStudents();
+    }
+  }
+
+  Future<void> openRegistrationScreen() async {
+    final result = await Navigator.pushNamed(context, '/register');
+    if (result == true) {
+      loadStudents();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Students List")),
+      appBar: AppBar(
+        title: const Text("Students Registry"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Register Student',
+            onPressed: openRegistrationScreen,
+          ),
+        ],
+      ),
 
       body: Column(
         children: [
@@ -75,7 +91,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
               controller: searchController,
               onChanged: searchStudent,
               decoration: const InputDecoration(
-                hintText: "Search student...",
+                hintText: "Search by name, email, or reg no...",
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
@@ -91,10 +107,31 @@ class _StudentListScreenState extends State<StudentListScreen> {
                     itemBuilder: (context, index) {
                       final student = filteredStudents[index];
 
+                      final String id = student['id']?.toString() ?? '';
+
                       return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         child: ListTile(
-                          title: Text(student['name']),
-                          subtitle: Text(student['email']),
+                          title: Text(
+                            "${student['name'] ?? 'Unknown'} (${student['reg_no'] ?? 'No Reg'})",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text("Email: ${student['email'] ?? 'N/A'}"),
+                              Text("Phone: ${student['phone'] ?? 'N/A'}"),
+                              Text("Course: ${student['course'] ?? 'N/A'}"),
+                              Text("Year: ${student['year'] ?? 'N/A'}"),
+                            ],
+                          ),
+
+                          isThreeLine: true,
 
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -114,7 +151,9 @@ class _StudentListScreenState extends State<StudentListScreen> {
                                   color: Colors.red,
                                 ),
                                 onPressed: () {
-                                  deleteStudent(student['id']);
+                                  if (id.isNotEmpty) {
+                                    deleteStudent(id);
+                                  }
                                 },
                               ),
                             ],

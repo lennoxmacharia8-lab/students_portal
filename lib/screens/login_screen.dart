@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../databases/database_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,43 +10,30 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool obscurePassword = true;
 
-  Future<void> loginUser() async {
-    if (_formKey.currentState!.validate()) {
-      try {
-        final result = await DatabaseService.instance.loginStudent(
-          emailController.text.trim(),
-          passwordController.text,
-        );
+  void loginAdmin() {
+    final username = usernameController.text.trim();
+    final password = passwordController.text.trim();
 
-        if (result != null) {
-          if (mounted) {
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Invalid email or password')),
-            );
-          }
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: $e')));
-        }
-      }
+    if (username == "admin" && password == "admin123") {
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Invalid admin credentials"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   @override
   void dispose() {
-    emailController.dispose();
+    usernameController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -74,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 10),
 
                 const Text(
-                  "Student Portal Login",
+                  "Admin Login Portal",
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -88,22 +74,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      // EMAIL
+                      // USERNAME
                       TextFormField(
-                        controller: emailController,
+                        controller: usernameController,
                         decoration: const InputDecoration(
                           filled: true,
                           fillColor: Colors.white,
-                          labelText: "Email",
-                          prefixIcon: Icon(Icons.email),
+                          labelText: "Username",
+                          prefixIcon: Icon(Icons.person),
                           border: OutlineInputBorder(),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return "Enter email";
-                          }
-                          if (!value.contains("@")) {
-                            return "Enter valid email";
+                            return "Enter username";
                           }
                           return null;
                         },
@@ -138,9 +121,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           if (value == null || value.isEmpty) {
                             return "Enter password";
                           }
-                          if (value.length < 4) {
-                            return "Password too short";
-                          }
                           return null;
                         },
                       ),
@@ -152,24 +132,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: loginUser,
+                          onPressed: () {
+                            if (_formKey.currentState!.validate()) {
+                              loginAdmin();
+                            }
+                          },
                           child: const Text(
-                            "Login",
+                            "Login as Admin",
                             style: TextStyle(fontSize: 16),
                           ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 15),
-
-                      // REGISTER LINK
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/register');
-                        },
-                        child: const Text(
-                          "Don't have an account? Register",
-                          style: TextStyle(color: Colors.white),
                         ),
                       ),
                     ],

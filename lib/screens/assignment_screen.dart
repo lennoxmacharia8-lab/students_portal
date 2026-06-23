@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../databases/database_service.dart';
 import '../models/assignment.dart';
+import '../models/students.dart';
 
 class AssignmentsScreen extends StatefulWidget {
   const AssignmentsScreen({super.key});
@@ -11,21 +12,27 @@ class AssignmentsScreen extends StatefulWidget {
 
 class _AssignmentsScreenState extends State<AssignmentsScreen> {
   late Future<List<Assignment>> _assignmentsFuture;
+  late Future<List<Student>> _studentsFuture;
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _courseController = TextEditingController();
+  final _studentIdController = TextEditingController();
+  final _studentNameController = TextEditingController();
   String _status = 'Pending';
 
   @override
   void initState() {
     super.initState();
     _loadAssignments();
+    _loadStudents();
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _courseController.dispose();
+    _studentIdController.dispose();
+    _studentNameController.dispose();
     super.dispose();
   }
 
@@ -35,6 +42,14 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
         (assignments) => assignments
             .map((assignment) => Assignment.fromMap(assignment))
             .toList(),
+      );
+    });
+  }
+
+  void _loadStudents() {
+    setState(() {
+      _studentsFuture = DatabaseService.instance.getStudents().then(
+        (list) => list.map((m) => Student.fromMap(m)).toList(),
       );
     });
   }
@@ -87,6 +102,43 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                       return null;
                     },
                   ),
+                  FutureBuilder<List<Student>>(
+                    future: _studentsFuture,
+                    builder: (context, snap) {
+                      if (snap.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (!snap.hasData || snap.data!.isEmpty) {
+                        return const Text('No registered students');
+                      }
+
+                      final students = snap.data!;
+
+                      return DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(labelText: 'Student'),
+                        items: students
+                            .map(
+                              (s) => DropdownMenuItem(
+                                value: s.id,
+                                child: Text('${s.name} (${s.regNo})'),
+                              ),
+                            )
+                            .toList(),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Select a student';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          if (value == null) return;
+                          final s = students.firstWhere((st) => st.id == value);
+                          _studentIdController.text = s.id;
+                          _studentNameController.text = s.name;
+                        },
+                      );
+                    },
+                  ),
                   DropdownButtonFormField<String>(
                     initialValue: _status,
                     decoration: const InputDecoration(labelText: 'Status'),
@@ -122,6 +174,8 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                     'title': _titleController.text.trim(),
                     'course': _courseController.text.trim(),
                     'status': _status,
+                    'student_id': _studentIdController.text.trim(),
+                    'student_name': _studentNameController.text.trim(),
                   });
                   if (!mounted) return;
                   navigator.pop(true);
@@ -179,7 +233,13 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
                     a.title,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text('Course: ${a.course}'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Course: ${a.course}'),
+                      Text('Student: ${a.studentName}'),
+                    ],
+                  ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,

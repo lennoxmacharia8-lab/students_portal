@@ -100,6 +100,24 @@ class DashboardScreen extends StatelessWidget {
               route: "/users",
               color: Colors.indigo,
             ),
+
+            // 📊 Attendance
+            buildCard(
+              context: context,
+              title: "Mark Attendance",
+              icon: Icons.check_circle,
+              route: "/attendance",
+              color: Colors.brown,
+            ),
+
+            // 📈 Attendance Report
+            buildCard(
+              context: context,
+              title: "Attendance Report",
+              icon: Icons.bar_chart,
+              route: "/attendance-report",
+              color: Colors.amber,
+            ),
           ],
         ),
       ),

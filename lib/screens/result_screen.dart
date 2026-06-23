@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../databases/database_service.dart';
 import '../models/result.dart';
+import '../models/students.dart';
 
 class ResultsScreen extends StatefulWidget {
   const ResultsScreen({super.key});
@@ -11,21 +12,27 @@ class ResultsScreen extends StatefulWidget {
 
 class _ResultsScreenState extends State<ResultsScreen> {
   late Future<List<Result>> _resultsFuture;
+  late Future<List<Student>> _studentsFuture;
   final _formKey = GlobalKey<FormState>();
   final _courseController = TextEditingController();
   final _codeController = TextEditingController();
+  final _studentIdController = TextEditingController();
+  final _studentNameController = TextEditingController();
   String _grade = 'A';
 
   @override
   void initState() {
     super.initState();
     _loadResults();
+    _loadStudents();
   }
 
   @override
   void dispose() {
     _courseController.dispose();
     _codeController.dispose();
+    _studentIdController.dispose();
+    _studentNameController.dispose();
     super.dispose();
   }
 
@@ -33,6 +40,14 @@ class _ResultsScreenState extends State<ResultsScreen> {
     setState(() {
       _resultsFuture = DatabaseService.instance.getResults().then(
         (results) => results.map((r) => Result.fromMap(r)).toList(),
+      );
+    });
+  }
+
+  void _loadStudents() {
+    setState(() {
+      _studentsFuture = DatabaseService.instance.getStudents().then(
+        (list) => list.map((m) => Student.fromMap(m)).toList(),
       );
     });
   }
@@ -86,6 +101,43 @@ class _ResultsScreenState extends State<ResultsScreen> {
                       return null;
                     },
                   ),
+                  FutureBuilder<List<Student>>(
+                    future: _studentsFuture,
+                    builder: (context, snap) {
+                      if (snap.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      if (!snap.hasData || snap.data!.isEmpty) {
+                        return const Text('No registered students');
+                      }
+
+                      final students = snap.data!;
+
+                      return DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(labelText: 'Student'),
+                        items: students
+                            .map(
+                              (s) => DropdownMenuItem(
+                                value: s.id,
+                                child: Text('${s.name} (${s.regNo})'),
+                              ),
+                            )
+                            .toList(),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Select a student';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          if (value == null) return;
+                          final s = students.firstWhere((st) => st.id == value);
+                          _studentIdController.text = s.id;
+                          _studentNameController.text = s.name;
+                        },
+                      );
+                    },
+                  ),
                   DropdownButtonFormField<String>(
                     initialValue: _grade,
                     decoration: const InputDecoration(labelText: 'Grade'),
@@ -121,6 +173,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     'course': _courseController.text.trim(),
                     'code': _codeController.text.trim(),
                     'grade': _grade,
+                    'student_id': _studentIdController.text.trim(),
+                    'student_name': _studentNameController.text.trim(),
                   });
                   if (!mounted) return;
                   navigator.pop(true);
@@ -175,7 +229,13 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     result.course,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text('Code: ${result.code}'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Code: ${result.code}'),
+                      Text('Student: ${result.studentName}'),
+                    ],
+                  ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
